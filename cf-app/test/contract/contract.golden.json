@@ -1,0 +1,1092 @@
+[
+  {
+    "step": "health",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "ok": true,
+      "users": 0,
+      "writable": true
+    }
+  },
+  {
+    "step": "config, signed out",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "allow_guest": true,
+      "invite_only": false,
+      "media": {
+        "audioMB": "<number>",
+        "avatar": "<boolean>",
+        "builtin": "<boolean>",
+        "days": "<boolean>",
+        "gifMB": "<number>",
+        "imageMB": "<number>",
+        "quotaMB": "<number>",
+        "sets": "<boolean>",
+        "sounds": "<boolean>",
+        "videoMB": "<number>",
+        "videoSec": "<number>",
+        "workouts": "<boolean>"
+      },
+      "signed_in": false
+    }
+  },
+  {
+    "step": "me, signed out",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "not signed in"
+    }
+  },
+  {
+    "step": "data, signed out",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "not signed in"
+    }
+  },
+  {
+    "step": "unknown route",
+    "status": 404,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "not found"
+    }
+  },
+  {
+    "step": "register options, no name",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "name required"
+    }
+  },
+  {
+    "step": "register options, not json",
+    "status": 415,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "content-type must be application/json"
+    }
+  },
+  {
+    "step": "register options",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "cid": "<string>",
+      "options": {
+        "attestation": "none",
+        "authenticatorSelection": {
+          "requireResidentKey": "<boolean>",
+          "residentKey": "required",
+          "userVerification": "preferred"
+        },
+        "challenge": "<string>",
+        "excludeCredentials": [],
+        "extensions": {
+          "credProps": "<boolean>"
+        },
+        "hints": [],
+        "pubKeyCredParams": [
+          {
+            "alg": -8,
+            "type": "public-key"
+          },
+          {
+            "alg": -7,
+            "type": "public-key"
+          },
+          {
+            "alg": -257,
+            "type": "public-key"
+          }
+        ],
+        "rp": {
+          "id": "<string>",
+          "name": "openGym"
+        },
+        "timeout": "<number>",
+        "user": {
+          "displayName": "<string>",
+          "id": "<string>",
+          "name": "Ana"
+        }
+      }
+    }
+  },
+  {
+    "step": "register verify, stale challenge",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "code": "challenge-expired",
+      "error": "challenge expired, try again"
+    }
+  },
+  {
+    "step": "register verify",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "set-cookie": [
+        "gymsid=<v>; Path=/; Max-Age=7776000; HttpOnly; SameSite=Lax"
+      ]
+    },
+    "body": {
+      "user": {
+        "admin": true,
+        "id": "<string>",
+        "name": "Ana",
+        "owner": true
+      }
+    }
+  },
+  {
+    "step": "me",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "user": {
+        "admin": true,
+        "id": "<string>",
+        "name": "Ana",
+        "owner": true
+      }
+    }
+  },
+  {
+    "step": "config, signed in",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "allow_guest": true,
+      "api_tokens": true,
+      "coach": null,
+      "invite_only": false,
+      "mcp": true,
+      "media": {
+        "audioMB": "<number>",
+        "avatar": "<boolean>",
+        "builtin": "<boolean>",
+        "days": "<boolean>",
+        "gifMB": "<number>",
+        "imageMB": "<number>",
+        "quotaMB": "<number>",
+        "sets": "<boolean>",
+        "sounds": "<boolean>",
+        "videoMB": "<number>",
+        "videoSec": "<number>",
+        "workouts": "<boolean>"
+      },
+      "signed_in": true
+    }
+  },
+  {
+    "step": "data, empty profile",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 0,
+      "state": null
+    }
+  },
+  {
+    "step": "rev, empty profile",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 0
+    }
+  },
+  {
+    "step": "put, nothing in it",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "state required"
+    }
+  },
+  {
+    "step": "put, workouts not a list",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "invalid state"
+    }
+  },
+  {
+    "step": "put, array",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "invalid state"
+    }
+  },
+  {
+    "step": "put, first write",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "ok": true,
+      "rev": 1,
+      "ts": null,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "rev after write",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 1,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "put, stale revision",
+    "status": 409,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "conflict",
+      "rev": 1,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "kg",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": "put, stale write id",
+    "status": 409,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "conflict",
+      "rev": 1,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "kg",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": "put, second write",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "ok": true,
+      "rev": 2,
+      "ts": null,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "data after writes",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 2,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [
+          "<string>"
+        ],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "lb",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": "nudge check, bad date",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "code": "date-invalid",
+      "error": "date must be YYYY-MM-DD"
+    }
+  },
+  {
+    "step": "nudge check, trained day",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "date": "2026-11-20",
+      "done": true,
+      "nudge": false,
+      "rev": 2
+    }
+  },
+  {
+    "step": "preflight from the phone app",
+    "status": 204,
+    "headers": {
+      "access-control-allow-origin": "https://localhost",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      "access-control-allow-headers": "Content-Type, Authorization, CF-Access-Client-Id, CF-Access-Client-Secret, X-OpenGym-Account, If-Match",
+      "access-control-max-age": "86400",
+      "access-control-allow-private-network": "true",
+      "vary": "Origin"
+    },
+    "body": null
+  },
+  {
+    "step": "cross-site write refused",
+    "status": 403,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://evil.example",
+      "vary": "Origin"
+    },
+    "body": {
+      "code": "origin-mismatch",
+      "error": "cross-origin request refused",
+      "expected": "http://localhost:8080"
+    }
+  },
+  {
+    "step": "login options",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "cid": "<string>",
+      "options": {
+        "allowCredentials": [],
+        "challenge": "<string>",
+        "rpId": "<string>",
+        "timeout": "<number>",
+        "userVerification": "preferred"
+      }
+    }
+  },
+  {
+    "step": "login verify",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "set-cookie": [
+        "gymsid=<v>; Path=/; Max-Age=7776000; HttpOnly; SameSite=Lax"
+      ]
+    },
+    "body": {
+      "user": {
+        "admin": true,
+        "id": "<string>",
+        "name": "Ana",
+        "owner": true
+      }
+    }
+  },
+  {
+    "step": "passkeys",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "lastWayIn": true,
+      "passkeys": [
+        {
+          "created": "<string>",
+          "id": "<string>",
+          "lastUsed": "<string>",
+          "name": null,
+          "transports": [
+            "<string>",
+            "<string>"
+          ]
+        }
+      ],
+      "password": false
+    }
+  },
+  {
+    "step": "pair without proof",
+    "status": 403,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "code": "passkey-required",
+      "error": "confirm with your passkey first"
+    }
+  },
+  {
+    "step": "login options for proof",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "cid": "<string>",
+      "options": {
+        "allowCredentials": [],
+        "challenge": "<string>",
+        "rpId": "<string>",
+        "timeout": "<number>",
+        "userVerification": "preferred"
+      }
+    }
+  },
+  {
+    "step": "pair create",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "code": "<string>"
+    }
+  },
+  {
+    "step": "pair redeem",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://localhost",
+      "vary": "Origin"
+    },
+    "body": {
+      "token": "<string>",
+      "user": {
+        "admin": true,
+        "id": "<string>",
+        "name": "Ana",
+        "owner": true
+      }
+    }
+  },
+  {
+    "step": "pair redeem twice",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://localhost",
+      "vary": "Origin"
+    },
+    "body": {
+      "code": "pair-invalid",
+      "error": "invalid or expired code"
+    }
+  },
+  {
+    "step": "phone reads data",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://localhost",
+      "vary": "Origin"
+    },
+    "body": {
+      "rev": 2,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [
+          "<string>"
+        ],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "lb",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": "phone writes",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://localhost",
+      "vary": "Origin"
+    },
+    "body": {
+      "ok": true,
+      "rev": 3,
+      "ts": null,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "phone with a bad bearer",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "https://localhost",
+      "vary": "Origin"
+    },
+    "body": {
+      "error": "not signed in"
+    }
+  },
+  {
+    "step": "token create",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "id": "<string>",
+      "token": "<string>",
+      "tokens": [
+        {
+          "created": "<number>",
+          "exp": "<number>",
+          "hint": "<string>",
+          "id": "<string>",
+          "name": "Assistant",
+          "scopes": {
+            "bodyweight": "<string>",
+            "measurements": "<string>",
+            "notes": "<string>",
+            "plans": "<string>",
+            "workouts": "<string>"
+          },
+          "used": null
+        }
+      ]
+    }
+  },
+  {
+    "step": "tokens list",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "categories": [
+        {
+          "id": "<string>",
+          "max": "<string>"
+        },
+        {
+          "id": "<string>",
+          "max": "<string>"
+        },
+        {
+          "id": "<string>",
+          "max": "<string>"
+        },
+        {
+          "id": "<string>",
+          "max": "<string>"
+        },
+        {
+          "id": "<string>",
+          "max": "<string>"
+        }
+      ],
+      "days": [
+        "<number>",
+        "<number>",
+        "<number>",
+        "<number>",
+        "<number>"
+      ],
+      "defaultDays": "<number>",
+      "mcp": true,
+      "tokens": [
+        {
+          "created": "<number>",
+          "exp": "<number>",
+          "hint": "<string>",
+          "id": "<string>",
+          "name": "Assistant",
+          "scopes": {
+            "bodyweight": "<string>",
+            "measurements": "<string>",
+            "notes": "<string>",
+            "plans": "<string>",
+            "workouts": "<string>"
+          },
+          "used": null
+        }
+      ]
+    }
+  },
+  {
+    "step": "token me",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "token": {
+        "exp": "<number>",
+        "id": "<string>",
+        "name": "Assistant",
+        "scopes": {
+          "bodyweight": "<string>",
+          "measurements": "<string>",
+          "notes": "<string>",
+          "plans": "<string>",
+          "workouts": "<string>"
+        }
+      },
+      "user": {
+        "id": "<string>",
+        "name": "Ana"
+      }
+    }
+  },
+  {
+    "step": "token data",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 3,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [
+          "<string>",
+          "<string>"
+        ],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "kg",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      },
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "token rev",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "rev": 3,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "token put without baseRev",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "code": "base-rev",
+      "error": "baseRev required: write over the revision you read"
+    }
+  },
+  {
+    "step": "token put, nothing changed",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "ok": true,
+      "rev": 3,
+      "unchanged": true,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "token put, stale",
+    "status": 409,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "conflict",
+      "rev": 3,
+      "state": {
+        "_rev": "<number>",
+        "_wid": "<string>",
+        "_wids": [
+          "<string>",
+          "<string>"
+        ],
+        "bodyweight": [
+          {
+            "d": "2026-11-20",
+            "kg": "<number>"
+          }
+        ],
+        "lang": "<string>",
+        "routines": [],
+        "unit": "kg",
+        "workouts": [
+          {
+            "d": "2026-11-20",
+            "ex": [],
+            "id": "<string>",
+            "name": "Push"
+          }
+        ]
+      },
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "token put, a workout",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "ok": true,
+      "rev": 4,
+      "ts": null,
+      "wid": "<string>"
+    }
+  },
+  {
+    "step": "token with a session route",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "not signed in"
+    }
+  },
+  {
+    "step": "bad token",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "www-authenticate": "Bearer error=\"invalid_token\""
+    },
+    "body": {
+      "code": "token-invalid",
+      "error": "token not accepted"
+    }
+  },
+  {
+    "step": "oauth metadata",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "authorization_endpoint": "http://localhost:8080/api/oauth/authorize",
+      "authorization_response_iss_parameter_supported": "<boolean>",
+      "client_id_metadata_document_supported": "<boolean>",
+      "code_challenge_methods_supported": [
+        "<string>"
+      ],
+      "grant_types_supported": [
+        "<string>",
+        "<string>"
+      ],
+      "issuer": "http://localhost:8080",
+      "registration_endpoint": "http://localhost:8080/api/oauth/register",
+      "response_types_supported": [
+        "<string>"
+      ],
+      "revocation_endpoint": "<string>",
+      "revocation_endpoint_auth_methods_supported": [
+        "<string>"
+      ],
+      "scopes_supported": [
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>"
+      ],
+      "service_documentation": "<string>",
+      "token_endpoint": "http://localhost:8080/api/oauth/token",
+      "token_endpoint_auth_methods_supported": [
+        "<string>"
+      ]
+    }
+  },
+  {
+    "step": "protected resource metadata",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "authorization_servers": [
+        "<string>"
+      ],
+      "bearer_methods_supported": [
+        "<string>"
+      ],
+      "resource": "http://localhost:8080/mcp",
+      "resource_documentation": "<string>",
+      "resource_name": "<string>",
+      "scopes_supported": [
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>",
+        "<string>"
+      ]
+    }
+  },
+  {
+    "step": "oauth register",
+    "status": 201,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "client_id": "<string>",
+      "client_id_issued_at": "<number>",
+      "client_name": "<string>",
+      "grant_types": [
+        "<string>",
+        "<string>"
+      ],
+      "redirect_uris": [
+        "<string>"
+      ],
+      "response_types": [
+        "<string>"
+      ],
+      "token_endpoint_auth_method": "<string>"
+    }
+  },
+  {
+    "step": "oauth token, bad grant",
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "pragma": "no-cache"
+    },
+    "body": {
+      "error": "invalid_grant",
+      "error_description": "<string>"
+    }
+  },
+  {
+    "step": "logout all",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "set-cookie": [
+        "gymsid=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"
+      ]
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  {
+    "step": "old cookie after logout all",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "body": {
+      "error": "not signed in"
+    }
+  },
+  {
+    "step": "old token after logout all",
+    "status": 401,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+      "www-authenticate": "Bearer error=\"invalid_token\""
+    },
+    "body": {
+      "code": "token-invalid",
+      "error": "token not accepted"
+    }
+  }
+]
