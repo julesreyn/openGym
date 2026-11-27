@@ -65,9 +65,10 @@ export function apiConfig(env = process.env) {
 
 /**
  * One request. Resolves { status, body } for 2xx and 409 (a conflict is the caller's to merge);
- * throws EAUTH, ETOOBIG, EAPI otherwise. `fetchImpl` is for tests.
+ * throws EAUTH, ETOOBIG, EAPI otherwise. `fetchImpl` is for tests, and for a host that reaches the
+ * api without the network (the request's profile passes its own, cfg.fetchImpl, to the write tools).
  */
-export async function apiFetch(cfg, path, { method = 'GET', body, timeoutMs = TIMEOUT_MS, fetchImpl = fetch } = {}) {
+export async function apiFetch(cfg, path, { method = 'GET', body, timeoutMs = TIMEOUT_MS, fetchImpl = cfg.fetchImpl || fetch } = {}) {
   let res
   try {
     res = await fetchImpl(cfg.base + path, {
