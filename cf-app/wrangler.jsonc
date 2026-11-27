@@ -43,7 +43,7 @@
     "RP_ID": "gym.quietware.dev",
     "MCP": "1",
     "FIRST_USER_ADMIN": "1",
-    "INVITE_ONLY": "0"
+    "INVITE_ONLY": "1"
   },
   "observability": { "enabled": true },
   // The MCP tools (../mcp/src) and this Worker must share one copy of the MCP SDK and of zod.

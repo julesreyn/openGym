@@ -120,14 +120,19 @@ Node 22, and `npx wrangler login` done once. The Workers Free plan is enough to 
 
    ```bash
    npm run build
-   npx wrangler deploy
+   npx wrangler deploy --var INVITE_ONLY:0
    ```
+
+   `wrangler.jsonc` keeps sign-ups closed (`INVITE_ONLY` is `1`); this first deploy opens them
+   for the one step below, so that a later deploy can never reopen them by accident.
 
 6. **Create your profile at once.** Open https://gym.quietware.dev, sign up with a passkey. The
    first profile is the owner (`FIRST_USER_ADMIN=1`).
 
-7. **Close sign-ups.** Set `"INVITE_ONLY": "1"` in `wrangler.jsonc` and deploy again. With
-   invites not ported, nobody else can then sign up; until then anyone who finds the address can.
+7. **Close sign-ups** by deploying again as `wrangler.jsonc` says. With invites not ported,
+   nobody else can then sign up; until then anyone who finds the address can. The Durable
+   Object that holds the accounts can keep the old settings for a few minutes after a deploy:
+   wait until `curl -s https://gym.quietware.dev/api/config` says `"invite_only":true`.
 
    ```bash
    npx wrangler deploy
