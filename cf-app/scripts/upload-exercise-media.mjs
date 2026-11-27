@@ -34,32 +34,38 @@ list.push({ key: 'NOTICE.md', file: path.join(media, 'NOTICE.md') });
 console.log(`${list.length} files for r2://${bucket}`);
 if (dry) process.exit(0);
 
-// In batches, so one failed request (R2's API answers a 502 now and then) costs one batch, not
-// the whole upload: each batch is tried three times, and the ones done are remembered in
-// .wrangler/ (gitignored), so running the script again carries on where it stopped.
-const BATCH = 500;
+// Cloudflare's API takes about 1,200 requests per 5 minutes and `r2 bulk put` makes one per file,
+// so the files go in batches of 250, at most one batch every 80 s (under 1,000 per 5 minutes).
+// A failed batch is tried three times; the files already sent are remembered in .wrangler/
+// (gitignored), so running the script again sends only the rest.
+const BATCH = 250, PACE_MS = 80_000;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'opengym-media-'));
 const stateFile = path.join(root, 'cf-app', '.wrangler', `media-upload-${bucket}.json`);
 fs.mkdirSync(path.dirname(stateFile), { recursive: true });
-const sig = list.length + ':' + list[0].key + ':' + list[list.length - 1].key;
-let done = new Set();
-try { const st = JSON.parse(fs.readFileSync(stateFile, 'utf8')); if (st.sig === sig) done = new Set(st.done); } catch { /* first run */ }
-const batches = Math.ceil(list.length / BATCH);
+let sent = new Set();
+try { sent = new Set(JSON.parse(fs.readFileSync(stateFile, 'utf8')).sent || []); } catch { /* first run */ }
+const todo = list.filter(x => !sent.has(x.key));
+const batches = Math.ceil(todo.length / BATCH);
+console.log(`${list.length - todo.length} already sent, ${todo.length} to go in ${batches} batches (about ${Math.ceil(batches * PACE_MS / 60000)} min)`);
+const wait = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 for (let b = 0; b < batches; b++) {
-  if (done.has(b)) continue;
+  const started = Date.now();
+  const part = todo.slice(b * BATCH, (b + 1) * BATCH);
   const file = path.join(dir, `batch-${b}.json`);
-  fs.writeFileSync(file, JSON.stringify(list.slice(b * BATCH, (b + 1) * BATCH)));
+  fs.writeFileSync(file, JSON.stringify(part));
   for (let attempt = 1; ; attempt++) {
     try {
-      execFileSync('npx', ['wrangler', 'r2', 'bulk', 'put', bucket, '--filename', file, '--remote', '--jurisdiction', 'eu', '--concurrency', '10'], { stdio: ['ignore', 'ignore', 'inherit'], cwd: path.join(root, 'cf-app') });
+      execFileSync('npx', ['wrangler', 'r2', 'bulk', 'put', bucket, '--filename', file, '--remote', '--jurisdiction', 'eu', '--concurrency', '5'], { stdio: ['ignore', 'ignore', 'inherit'], cwd: path.join(root, 'cf-app') });
       break;
-    } catch (e) {
+    } catch {
       if (attempt >= 3) { console.error(`batch ${b + 1}/${batches} failed three times; run the script again to carry on`); process.exit(1); }
-      console.error(`batch ${b + 1}/${batches} failed (attempt ${attempt}), trying again`);
+      console.error(`batch ${b + 1}/${batches} failed (attempt ${attempt}), waiting and trying again`);
+      wait(PACE_MS);
     }
   }
-  done.add(b);
-  fs.writeFileSync(stateFile, JSON.stringify({ sig, done: [...done] }));
-  console.log(`batch ${b + 1}/${batches} uploaded`);
+  for (const x of part) sent.add(x.key);
+  fs.writeFileSync(stateFile, JSON.stringify({ sent: [...sent] }));
+  console.log(`batch ${b + 1}/${batches} uploaded (${sent.size}/${list.length})`);
+  if (b < batches - 1) wait(Math.max(0, PACE_MS - (Date.now() - started)));
 }
 console.log(`all ${list.length} files are in r2://${bucket}`);
