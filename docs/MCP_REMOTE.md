@@ -124,7 +124,7 @@ preview writes with `dry_run`, save after the user agrees.
 | Tool | Needs |
 |---|---|
 | list_routines, get_routine, preview_session, get_week_plan, get_programme | Plans: See |
-| list_workouts, get_workout, estimate_1rm, muscle_balance | Workouts: See |
+| list_workouts, get_workout, estimate_1rm, list_personal_records, muscle_balance | Workouts: See |
 | search_exercises | Workouts or Plans: See (the library, not your data) |
 | get_bodyweight | Body weight: See |
 | log_workout | Workouts: Change directly |

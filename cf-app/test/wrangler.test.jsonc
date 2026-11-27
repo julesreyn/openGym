@@ -1,0 +1,36 @@
+// The Worker as the tests run it (vitest.config.js): wrangler.jsonc without the account, the
+// custom domain and the real buckets, on http://localhost:8080 like the Node tests.
+{
+  "name": "opengym-cf-test",
+  "main": "../src/index.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./fixtures/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/.well-known/*", "/exercise-media/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "DIRECTORY", "class_name": "DirectoryDO" },
+      { "name": "PROFILE", "class_name": "ProfileDO" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DirectoryDO", "ProfileDO"] }],
+  "r2_buckets": [
+    { "binding": "UPLOADS", "bucket_name": "test-uploads" },
+    { "binding": "EXERCISE_MEDIA", "bucket_name": "test-exercise-media" }
+  ],
+  "vars": {
+    "ORIGIN": "http://localhost:8080",
+    "RP_ID": "localhost",
+    "MCP": "1",
+    "FIRST_USER_ADMIN": "1",
+    "SESSION_SECRET": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "alias": {
+    "@modelcontextprotocol/sdk": "../node_modules/@modelcontextprotocol/sdk",
+    "zod": "../node_modules/zod"
+  }
+}

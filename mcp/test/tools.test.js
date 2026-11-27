@@ -1484,3 +1484,38 @@ describe('search_exercises (sub-connect-146)', () => {
     expect(toolAllowed('search_exercises', { workouts: 'off', plans: 'off', bodyweight: 'view' })).toBe(false)
   })
 })
+
+/* ---------- list_workouts by exercise, list_personal_records (Cloudflare port, #MCP tools) ---------- */
+describe('list_workouts exercise filter', () => {
+  test('keeps only sessions with a completed set of that exercise, and shows its sets', () => {
+    const all = call('list_workouts', { limit: 200 })
+    const r = call('list_workouts', { exercise_id: LEG_PRESS_ID, limit: 200 })
+    expect(r.matching_count).toBeGreaterThan(0)
+    expect(r.matching_count).toBeLessThanOrEqual(all.matching_count)
+    for (const w of r.workouts) {
+      expect(w.exercise.id).toBe(LEG_PRESS_ID)
+      expect(w.exercise.sets.length).toBeGreaterThan(0)
+    }
+    const best = Math.max(...r.workouts.flatMap(w => w.exercise.sets.map(s => s.w || 0)))
+    expect(best).toBe(LEG_PRESS_BEST.w)
+  })
+  test('an exercise never trained matches nothing', () => {
+    expect(call('list_workouts', { exercise_id: 'no-such-exercise' }).matching_count).toBe(0)
+  })
+})
+
+describe('list_personal_records', () => {
+  test('lists the recorded load PRs newest first, filterable by exercise and date', () => {
+    const r = call('list_personal_records', { limit: 200 })
+    const recorded = S.workouts.reduce((n, w) => n + (Array.isArray(w.prs) ? w.prs.length : 0), 0)
+    expect(r.matching_count).toBe(recorded)
+    const dates = r.records.map(x => x.date)
+    expect(dates).toEqual([...dates].sort().reverse())
+    if (r.records.length) {
+      const one = r.records[0]
+      const only = call('list_personal_records', { exercise_id: one.exercise.id, limit: 200 })
+      expect(only.records.every(x => x.exercise.id === one.exercise.id)).toBe(true)
+      expect(call('list_personal_records', { from: one.date, to: one.date }).records.every(x => x.date === one.date)).toBe(true)
+    }
+  })
+})

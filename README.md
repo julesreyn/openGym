@@ -29,6 +29,11 @@
 
 </div>
 
+> **This fork is a port of openGym to Cloudflare** (Workers, Durable Objects, R2, and the MCP
+> server at `/mcp`). The port lives in [`cf-app/`](cf-app/README.md); everything else is
+> [upstream openGym](https://github.com/DuarteSantos8/openGym), by its authors, under the same
+> licence (AGPL-3.0-or-later). Report problems with the port here, not upstream.
+
 ## Why openGym
 
 Most workout apps keep your data on their servers, push you towards a subscription, or vanish

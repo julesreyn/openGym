@@ -40,7 +40,7 @@ export function createRemoteProfile(cfg, { fetchImpl } = {}) {
     },
     /** What withProfile() takes. A copy each time: the tools may shape what they read. */
     snapshot() {
-      return { state: state ? structuredClone(state) : null, user, scopes, api: cfg, invalidate: () => { rev = null } }
+      return { state: state ? structuredClone(state) : null, user, scopes, api: fetchImpl ? { ...cfg, fetchImpl } : cfg, invalidate: () => { rev = null } }
     },
     invalidate() { rev = null },
   }

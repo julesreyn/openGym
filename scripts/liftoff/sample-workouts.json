@@ -1,0 +1,73 @@
+[
+  {
+    "id": "post-2",
+    "startedAt": "2026-11-17T17:30:00Z",
+    "postedAt": "2026-11-17T18:35:12Z",
+    "sessionDuration": "01 hours 05 minutes 12 seconds",
+    "sessionDurationSeconds": 3912,
+    "sessionNotes": "Travel gym, kg plates",
+    "bodyweight": 176.4,
+    "caloriesBurned": 410,
+    "prCount": 1,
+    "exerciseData": [
+      {
+        "exerciseIndex": 0, "exerciseName": "Seated Cable Chest Press", "exerciseId": "ex-scp", "exerciseTypes": "WR", "exerciseNotes": "Seat on 4",
+        "setsData": [
+          { "setIndex": 0, "setType": "warmup", "inputOne": 22.0462262185, "inputTwo": 12, "weightLb": 22.0462262185, "distanceKm": null },
+          { "setIndex": 1, "setType": "normal", "inputOne": 110.2311310925, "inputTwo": 8, "weightLb": 110.2311310925, "distanceKm": null },
+          { "setIndex": 2, "setType": "normal", "inputOne": 110.2311310925, "inputTwo": 7, "weightLb": 110.2311310925, "distanceKm": null }
+        ]
+      },
+      {
+        "exerciseIndex": 1, "exerciseName": "Pull Up", "exerciseId": "ex-pu", "exerciseTypes": "AB", "exerciseNotes": "",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 44.092452437, "inputTwo": 6, "weightLb": 44.092452437, "distanceKm": null }
+        ]
+      },
+      {
+        "exerciseIndex": 2, "exerciseName": "Treadmill Run", "exerciseId": "ex-tr", "exerciseTypes": "DD", "exerciseNotes": "",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 3.2, "inputTwo": 1200, "weightLb": null, "distanceKm": 3.2 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "post-1",
+    "startedAt": "2026-11-15T08:05:00Z",
+    "postedAt": "2026-11-15T08:57:40Z",
+    "sessionDuration": "52 minutes 40 seconds",
+    "sessionDurationSeconds": 3160,
+    "sessionNotes": "",
+    "bodyweight": null,
+    "caloriesBurned": 300,
+    "prCount": 0,
+    "exerciseData": [
+      {
+        "exerciseIndex": 0, "exerciseName": "Back Squat", "exerciseId": "ex-sq", "exerciseTypes": "WR", "exerciseNotes": "Belt, \"slow\" eccentric",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 225, "inputTwo": 5, "weightLb": 225, "distanceKm": null },
+          { "setIndex": 1, "setType": "normal", "inputOne": 225, "inputTwo": 5, "weightLb": 225, "distanceKm": null }
+        ]
+      },
+      {
+        "exerciseIndex": 1, "exerciseName": "Weighted Dip", "exerciseId": "ex-dip", "exerciseTypes": "BR", "exerciseNotes": "",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 25, "inputTwo": 8, "weightLb": 25, "distanceKm": null }
+        ]
+      },
+      {
+        "exerciseIndex": 2, "exerciseName": "Plank", "exerciseId": "ex-pl", "exerciseTypes": "ND", "exerciseNotes": "",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 0, "inputTwo": 60, "weightLb": null, "distanceKm": null }
+        ]
+      },
+      {
+        "exerciseIndex": 3, "exerciseName": "Farmer Carry", "exerciseId": "ex-fc", "exerciseTypes": "WD", "exerciseNotes": "",
+        "setsData": [
+          { "setIndex": 0, "setType": "normal", "inputOne": 70, "inputTwo": 0.04, "weightLb": 70, "distanceKm": 0.04 }
+        ]
+      }
+    ]
+  }
+]
