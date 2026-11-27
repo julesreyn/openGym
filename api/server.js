@@ -64,6 +64,10 @@ import { currentConsent } from './consent.js';
 import { oidcConfig } from './oidc/config.js';
 import { createProvider } from './oidc/provider.js';
 import { oidcRoutes } from './oidc/routes.js';
+import { createSessionCodec } from './session-token.js';
+import { createFsStorage } from './storage/fs.js';
+import { UNREADABLE } from './storage/index.js';
+import { planCommit, checkPutBody, putConflicts, putOptions, WID_KEEP } from './state-commit.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -164,32 +168,10 @@ const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 // connections live in DATA_DIR/integrations/, sealed with a key derived from SECRET.
 const integrations = createIntegrations({ dataDir: DATA, secret: SECRET, version: '1' });
 
-const dbFile = path.join(DATA, 'db.json');
-// Every account, passkey and invite. Only a missing file starts empty: an unreadable one (a write
-// cut short by a power loss, a damaged restore) used to boot with no users at all, and the first
-// save then replaced it — every profile locked out, every training history orphaned, and with
-// FIRST_USER_ADMIN the first visitor made admin. Now the damaged file is kept aside and the copy
-// saveDb keeps of each version it writes (db.json.bak) is used; with neither readable the server
-// refuses to start, saying why, rather than start as a new instance.
-function loadDb() {
-  let raw;
-  try { raw = fs.readFileSync(dbFile, 'utf8'); }
-  catch (e) { if (e.code === 'ENOENT') return { users: [], creds: [], subs: [], invites: [] }; throw e; }
-  const parse = text => { const v = JSON.parse(text); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('not an object'); return v; };
-  try { return parse(raw); } catch (err) {
-    const aside = `${dbFile}.unreadable-${Date.now()}`;
-    try { fs.copyFileSync(dbFile, aside); } catch { /* the original stays where it is anyway */ }
-    console.error(`db.json cannot be read (${err.message}); kept a copy as ${path.basename(aside)}`);
-    try {
-      const bak = parse(fs.readFileSync(dbFile + '.bak', 'utf8'));
-      console.error('db.json: using db.json.bak, the copy of the last save');
-      return bak;
-    } catch {
-      console.error('db.json: no readable db.json.bak either. Refusing to start: restore db.json from a backup.');
-      process.exit(1);
-    }
-  }
-}
+// Every account, passkey and invite, and each profile's document: the StorageAdapter
+// (storage/index.js). On this server it is DATA_DIR on disk, storage/fs.js.
+const storage = createFsStorage(DATA);
+const loadDb = storage.loadDb;
 let db = loadDb();
 db.users = db.users || [];
 db.creds = db.creds || [];
@@ -223,25 +205,15 @@ const perms = createPermissions({
 });
 const budgets = createBudgets();
 const codeGuard = createCodeGuard();
-// 0600: db.json holds passkey credential material. It used to be covered by a blanket 0700 on
-// the whole directory; now that the directory stays traversable, the file carries its own mode.
-// Once the new version is on disk, a second copy of it goes to db.json.bak, the same durable
-// way: loadDb falls back to it. A copy of the version being replaced, as it used to be, lost
-// whatever the last save wrote (a profile just created) when db.json was later found unreadable.
-// A write cut short leaves the previous db.json.bak whole (temporary file and rename).
-function saveDb() {
-  const text = JSON.stringify(db, null, 2);
-  atomicWrite(dbFile, text, 0o600);
-  try { atomicWrite(dbFile + '.bak', text, 0o600); }
-  catch (e) { console.error('db.json.bak could not be written', e.message); }
-}
+// db.json and db.json.bak, durably and 0600 (storage/fs.js).
+function saveDb() { storage.saveDb(db); }
 // Flushed before and after the rename (durable.js): a host reset must not bring back the file
 // the client was told had been replaced.
 function atomicWrite(file, content, mode) { durableWrite(file, content, mode); }
 // How many earlier write ids a document keeps (`_wids`, see PUT /api/data): a device that last
 // synced more writes ago than this merges on its next pull instead of taking the server's copy.
-const WID_KEEP = 50;
-const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+// WID_KEEP: state-commit.js (writeStateAs below keeps the same number).
+const stateFile = storage.stateFile;   // the stat caches below look at the file itself
 // The watch relay's mailbox of a profile (watch-relay.js): the page's last snapshot and what its
 // Zepp OS watches sent. Small, rewritten whole like the state file.
 const watchFile = uid => path.join(DATA, 'watch-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
@@ -257,19 +229,11 @@ function notePull(user, now = Date.now()) {
 }
 // The later of the last push and the last pull.
 const lastSyncOf = (u, S) => Math.max(S?._ts || 0, u?.lastPull || 0) || null;
-function readState(uid) {
-  try { return JSON.parse(fs.readFileSync(stateFile(uid), 'utf8')); } catch { return null; }
-}
+const readState = storage.readState;
 // GET and PUT /api/data tell a profile with no state yet from one whose file cannot be read: the
 // second answers 503 instead of an empty profile, which a device would adopt, or a write would
 // replace, losing what a restore could still bring back.
-const UNREADABLE = Symbol('unreadable');
-function readStateStrict(uid) {
-  let raw;
-  try { raw = fs.readFileSync(stateFile(uid), 'utf8'); }
-  catch (e) { return e.code === 'ENOENT' ? null : UNREADABLE; }
-  try { return JSON.parse(raw); } catch { return UNREADABLE; }
-}
+const readStateStrict = storage.readStateStrict;
 // A stored document as a client gets it: without the server's own notes `_unstamped` and `_prior`.
 function forClient(S) {
   if (!S || typeof S !== 'object' || !('_unstamped' in S || '_prior' in S)) return S;
@@ -517,7 +481,7 @@ function writeStateAs(uid, fn, { skipIf = null } = {}) {
   next._wids = [...(Array.isArray(cur._wids) ? cur._wids : []), ...(cur._wid ? [cur._wid] : [])].filter(x => typeof x === 'string').slice(-WID_KEEP);
   next._wid = crypto.randomBytes(8).toString('hex');
   delete next.active;
-  atomicWrite(stateFile(uid), JSON.stringify(next));
+  storage.writeState(uid, JSON.stringify(next));
   stateCache.delete(uid);
   if (MEDIA_ON) { try { MEDIA.noteState(uid, next); } catch (e) { console.error('media noteState', e); } }
   try { integrations.onStateWrite(uid, cur, next); } catch (e) { console.error('integrations onStateWrite', e); }
@@ -528,42 +492,11 @@ function writeStateAs(uid, fn, { skipIf = null } = {}) {
 // (mutated), `overRead` whether the writer sent the revision it read and it is the current one.
 // → { status, body } for the answer.
 function commitState(uid, cur, state, { overRead = false, stamped = false } = {}) {
-  const curRev = cur?._rev || 0;
-  delete state.active;              // in-progress workouts stay device-local
-  // "Reset everything" stamps the profile (`resetAt`, with `resetIds`: what it wiped). The stamp
-  // only moves forward: a write without it, or with an older one — a client from before it, a
-  // backup restored over the profile — keeps the stored stamp. Otherwise every device that saw
-  // the reset would take that copy for one older than the reset, and wipe it again on its next
-  // merge (frontend/src/lib/sync-merge.js).
-  const storedReset = Number(cur?.resetAt) || 0;
-  if (storedReset > (Number(state.resetAt) || 0)) {
-    state.resetAt = cur.resetAt;
-    if (cur.resetIds && typeof cur.resetIds === 'object') state.resetIds = cur.resetIds;
-    else delete state.resetIds;
-  }
-  // The records of removals and edits only grow, and what a writer that does not stamp its own
-  // changes (an older app, an API script) changed is stamped here, so it is neither wiped nor
-  // undone by the next device that merges (sync-stamps.js).
-  // A document nested too deep to compare is the bad request the stringify below refuses too.
-  const report = {};
-  try { stampPut(cur, state, { overRead, stamped, report }); }
-  catch (e) { if (e instanceof RangeError) return { status: 400, body: { error: 'invalid state' } }; throw e; }
-  state._rev = curRev + 1;          // server-owned; whatever the client sent is ignored
-  // A writer that does not stamp (an older app) takes the revision it is told for the document it
-  // sent, and only reads the profile again once the revision moves. When the server put back
-  // something it left out or set back (sync-stamps.js), the document stored is not that one: it
-  // goes in one revision further, so the writer's next check of the revision (every half minute)
-  // finds it moved and reads it, and its next push over the one it was told is a conflict to merge.
-  if (report.changed) state._rev = curRev + 2;
-  state._wids = [...(Array.isArray(cur?._wids) ? cur._wids : []), ...(cur?._wid ? [cur._wid] : [])]
-    .filter(x => typeof x === 'string').slice(-WID_KEEP);
-  state._wid = crypto.randomBytes(8).toString('hex');
-  // JSON.parse takes any nesting, JSON.stringify recurses and runs out of stack on a document
-  // nested some thousands deep. No client builds one; it is a bad request, not a server error.
-  let text;
-  try { text = JSON.stringify(state); }
-  catch (e) { if (e instanceof RangeError) return { status: 400, body: { error: 'invalid state' } }; throw e; }
-  atomicWrite(stateFile(uid), text);
+  // The revision, write-id and stamp rules: state-commit.js, shared with the Cloudflare port.
+  const plan = planCommit(cur, state, { overRead, stamped });
+  if (plan.status !== 200) return plan;
+  const text = plan.text;
+  storage.writeState(uid, text);
   // The stat cache cannot see this write on its own: mtime granularity is 4 ms here (ext4 on
   // this kernel — 3901 of 3999 back-to-back same-size writes shared one timestamp), and a
   // `_rev` going from 7 to 8 does not change the file's size, so two writes inside one 4 ms
@@ -580,7 +513,7 @@ function commitState(uid, cur, state, { overRead = false, stamped = false } = {}
   // A finished workout, a record or a weigh-in the profile's integrations asked to hear about:
   // queued for delivery (integrations/outbox.js), never sent from inside this request.
   try { integrations.onStateWrite(uid, cur, state); } catch (e) { console.error('integrations onStateWrite', e); }
-  return { status: 200, body: { ok: true, ts: state._ts || null, rev: curRev + 1, wid: state._wid } };
+  return { status: 200, body: plan.body };
 }
 // Missed-workout nudge (nudge.js): opt-in on top of the reminder, so it needs everything the
 // reminder does (a push subscription, the reminder on, a zone). Owed from 20:00 — or 2 h after the
@@ -697,26 +630,14 @@ setInterval(() => {
 }, REMINDER_TICK_MS).unref();
 
 /* ---------- sessions (signed cookie) ---------- */
-function sign(payload) {
-  const mac = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
-  return payload + '.' + mac;
-}
-function verifySig(token) {
-  const i = token.lastIndexOf('.');
-  if (i < 0) return null;
-  const payload = token.slice(0, i), mac = token.slice(i + 1);
-  const expect = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
-  try {
-    if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expect))) return null;
-  } catch { return null; }
-  return payload;
-}
+// Signing and reading the token live in session-token.js (shared with the Cloudflare port, cf-app/).
+const SESSIONS = createSessionCodec(SECRET, { days: SESSION_DAYS });
 // Session payload is `<uid>:<expiry>:<version>`, where the version is the user's `sv` counter.
 // Bumping `sv` (POST /api/logout/all) makes every cookie ever handed out for that account stop
 // verifying, which is the only revocation there was before short of deleting ./data/secret and
 // signing out the whole instance. Cookies minted before `sv` existed have no third field and are
 // read as version 0, matching a user who has never bumped — they stay valid until they expire.
-const sessionVersion = user => user.sv || 0;
+const sessionVersion = SESSIONS.sessionVersion;
 // A fourth field says what the token was made for: `c` a browser's cookie, `b` a paired phone's
 // bearer. Both verify the same way and either works in either place, but only a phone's token is
 // renewed (GET /api/me): a cookie value replayed as a bearer used to be traded for a fresh 90-day
@@ -724,10 +645,7 @@ const sessionVersion = user => user.sv || 0;
 // before the field have none and are renewed as before; the cookies among them expire on their own.
 // A fifth field, when present, is when the provider signed this session in (base 36 ms): a
 // sign-in there a few minutes ago counts as proof for a change to a way in (proveOwner).
-function makeSession(user, kind = 'b', at = null) {
-  const exp = Date.now() + SESSION_DAYS * 86400000;
-  return sign(user.id + ':' + exp + ':' + sessionVersion(user) + ':' + kind + (at ? ':' + Math.floor(at).toString(36) : ''));
-}
+const makeSession = SESSIONS.makeSession;
 // With the __Host- prefix the *browser* guarantees the cookie is host-only (no Domain attribute
 // is even allowed) — which is what stops a sibling subdomain, e.g. anything-else.example.com
 // against gym.example.com, from planting a second session cookie for the shared parent domain
@@ -775,19 +693,7 @@ function sessionOf(req) {
 // The session a token (a cookie value or a bearer) stands for — { user, exp } — or null. Split
 // out of sessionOf so the origin check can ask whether a bearer authenticates on its own.
 function sessionUser(tok) {
-  if (!tok) return null;
-  const payload = verifySig(tok);
-  if (!payload) return null;
-  const [uid, exp, ver, kind, at] = payload.split(':');
-  if (!uid || +exp < Date.now()) return null;
-  const user = db.users.find(u => u.id === uid) || null;
-  if (!user) return null;
-  if (user.disabled) return null;           // disabled accounts are locked out everywhere
-  // Missing third field = pre-versioning cookie = version 0. Anything non-numeric is a malformed
-  // payload (it still had to pass the HMAC, so this is belt-and-braces) and is refused outright.
-  const claimed = ver === undefined ? 0 : Number(ver);
-  if (!Number.isInteger(claimed) || claimed !== sessionVersion(user)) return null;
-  return { user, exp: +exp, kind: kind || null, at: at ? parseInt(at, 36) || null : null };
+  return SESSIONS.sessionUser(tok, uid => db.users.find(u => u.id === uid));
 }
 function readSession(req) {
   return sessionOf(req)?.user || null;
@@ -1588,7 +1494,7 @@ function removeAccount(u) {
   revokeTokens(db, u.id);
   presence.delete(u.id);
   // The training history and any Coach credential of theirs, both outside db.json.
-  try { fs.unlinkSync(stateFile(u.id)); } catch { /* already gone */ }
+  storage.deleteState(u.id);
   try { fs.unlinkSync(watchFile(u.id)); } catch { /* never had a watch */ }
   try { coachConfig.clearProfileAuth(u.id); } catch { /* nothing stored */ }
   // The Coach's own record of them: plans waiting for a yes, the job history, the cohort switch.
@@ -3178,30 +3084,10 @@ const routes = {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
-    if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
-    // An object with nothing of the profile in it empties the document with the counter left
-    // intact: what lands on disk is `{"_rev":n+1}`, every routine, workout and weigh-in gone, and
-    // the next poll reports a revision the client accepts as its own. `_rev` and `_ts` do not
-    // count towards "something of the profile" — both are bookkeeping this route writes or echoes
-    // itself, so `{}` and `{"_rev":5}` are the same push and get the same refusal. Nothing
-    // shipped sends either: the web and mobile clients push a state built on DEF
-    // (frontend/src/store/useStore.js), which always carries its keys. An array is a document
-    // loss of its own and is left to the `invalid state` check below, which already refuses it.
-    if (!Array.isArray(body.state) && !Object.keys(body.state).some(k => k !== '_rev' && k !== '_ts')) {
-      return json(res, 400, { error: 'state required' });
-    }
-    // The reminder tick and the admin routes iterate these two on the server's side, so a truthy
-    // non-array would throw there on every pass for as long as it sat on disk. Absent or null is
-    // fine — every client fills its own defaults. An array is `typeof 'object'` but no document:
-    // `_rev` set on it is dropped by JSON.stringify, so the file would read back as rev 0 while
-    // the response claimed the next revision.
-    const list = v => v == null || Array.isArray(v);
-    if (Array.isArray(body.state) || !list(body.state.workouts) || !list(body.state.routines)) return json(res, 400, { error: 'invalid state' });
-    // The same readers walk every entry (`w.d`, `w.name`). They skip what is not an entry now
-    // (`records` above), but nothing should be storing one. Dropped, not refused:
-    // such an entry carries nothing worth keeping, whereas a 400 would strand a client whose own
-    // copy is already malformed — it keeps re-sending the same document and never syncs again.
-    for (const k of ['workouts', 'routines']) if (Array.isArray(body.state[k])) body.state[k] = records(body.state[k]);
+    // What a body must hold, and which entries are dropped: state-commit.js checkPutBody, shared
+    // with the Cloudflare port (an empty or array document, non-array workouts or routines).
+    const refused = checkPutBody(body);
+    if (refused) return json(res, refused.status, refused.body);
     // Conditional write: a `baseRev` that is not the current revision means this client last
     // read an older document — another device has written since — and the copy it is about to
     // push would silently drop that write. The current document travels back with the 409, so
@@ -3211,17 +3097,13 @@ const routes = {
     // compare-and-write is atomic for this process.
     const cur = readStateStrict(user.id);
     if (cur === UNREADABLE) { console.error('state file unreadable for', user.id); return json(res, 503, { error: 'state unreadable' }); }
-    const curRev = cur?._rev || 0;
     // `_rev` is a counter, so after the data directory went back in time (a restored backup, a
     // write lost to a power cut) the same number names a different document. Every write also gets
     // a write id (`_wid`) and keeps its ancestors' (`_wids`): a client quoting the id it last saw
     // (`baseWid`) is refused when the stored document is not that one, whatever the numbers say,
     // and a client reading a document can tell whether it descends from its own (useStore pullState).
-    if ((body.baseRev != null && body.baseRev !== curRev) ||
-        (body.baseRev != null && typeof body.baseWid === 'string' && cur?._wid && body.baseWid !== cur._wid)) {
-      return json(res, 409, { error: 'conflict', rev: curRev, state: forClient(cur) });
-    }
-    const done = commitState(user.id, cur, body.state, { overRead: body.baseRev != null && body.baseRev === curRev, stamped: body.stamped === true });
+    if (putConflicts(body, cur)) return json(res, 409, { error: 'conflict', rev: cur?._rev || 0, state: forClient(cur) });
+    const done = commitState(user.id, cur, body.state, putOptions(body, cur));
     json(res, done.status, done.body);
   },
 
