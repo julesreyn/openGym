@@ -1,0 +1,24 @@
+{
+  "name": "opengym-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "openGym on Cloudflare: the app as static assets, the API in a Worker with Durable Objects, uploads and exercise media in R2, and the remote MCP server at /mcp.",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "dev": "wrangler dev",
+    "test": "vitest run && node --test test/contract.node.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.10.0",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.169.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@simplewebauthn/server": "^13.3.3",
+    "zod": "^4.6.7"
+  }
+}

@@ -1,0 +1,54 @@
+// openGym on Cloudflare (cf-app/README.md). Not the opengym.ch failover in ../cloudflare/.
+//   npm run build         builds the app into dist/ (scripts/build.sh)
+//   npx wrangler deploy   deploys the Worker, its Durable Objects and dist/
+// Secrets (never in this file): npx wrangler secret put SESSION_SECRET
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "opengym-cf",
+  "account_id": "71104785e85cf989584fbc38609068d4",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  // node:crypto (HMAC sessions, token hashes) and Buffer, which the shared api/ modules use.
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "gym.quietware.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // The app uses hash routes; an unknown path gets the app (nginx answered a 302 to /).
+    "not_found_handling": "single-page-application",
+    // Only these reach the Worker; every other file is served as a static asset, which is free
+    // and does not count against the daily request allowance.
+    "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/.well-known/*", "/exercise-media/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      // The accounts (db.json) and the API routes: one object for the instance.
+      { "name": "DIRECTORY", "class_name": "DirectoryDO" },
+      // One object per profile: its document and the compare-and-write of a sync.
+      { "name": "PROFILE", "class_name": "ProfileDO" }
+    ]
+  },
+  // SQLite-backed objects: the only kind the Workers Free plan offers.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DirectoryDO", "ProfileDO"] }],
+  "r2_buckets": [
+    // Photos, videos and sounds people add to their own exercises (DATA_DIR/uploads on Node).
+    { "binding": "UPLOADS", "bucket_name": "opengym-uploads", "jurisdiction": "eu" },
+    // The licensed 180 px exercise stills and clips (catalogue/media), served only to a signed-in
+    // profile by the Worker, never as public assets (NOTICE.md).
+    { "binding": "EXERCISE_MEDIA", "bucket_name": "opengym-exercise-media", "jurisdiction": "eu" }
+  ],
+  "vars": {
+    "ORIGIN": "https://gym.quietware.dev",
+    "RP_ID": "gym.quietware.dev",
+    "MCP": "1",
+    "FIRST_USER_ADMIN": "1",
+    "INVITE_ONLY": "0"
+  },
+  "observability": { "enabled": true },
+  // The MCP tools (../mcp/src) and this Worker must share one copy of the MCP SDK and of zod.
+  "alias": {
+    "@modelcontextprotocol/sdk": "./node_modules/@modelcontextprotocol/sdk",
+    "zod": "./node_modules/zod"
+  }
+}
