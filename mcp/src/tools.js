@@ -280,9 +280,10 @@ export const listWorkouts = {
   schema: {
     from: isoDate().optional().describe('Inclusive start date YYYY-MM-DD. Defaults to no lower bound (list most recent).'),
     to: isoDate().optional().describe('Inclusive end date YYYY-MM-DD. Defaults to today.'),
-    limit: z.number().int().min(1).max(200).optional().describe('Max items to return. Defaults to 25.')
+    limit: z.number().int().min(1).max(200).optional().describe('Max items to return. Defaults to 25.'),
+    exercise_id: z.string().min(1).optional().describe('Only sessions where this exercise (an id from search_exercises, list_routines or get_workout) has at least one completed set. Each item then also carries that exercise\'s sets.')
   },
-  handler: ({ from, to, limit }) => {
+  handler: ({ from, to, limit, exercise_id }) => {
     const S = getState()
     if (!S) return noState()
     const lim = Math.min(Math.max(limit || 25, 1), 200)
@@ -290,9 +291,11 @@ export const listWorkouts = {
     // future — another device with a wrong clock — was listed first as the most recent session.
     const hi = to || todayIso()
     const all = (S.workouts || []).slice().sort((a, b) => (b.d || '').localeCompare(a.d || ''))
+    const entryOf = w => (w.entries || []).find(e => e && e.id === exercise_id && (e.sets || []).some(x => x && x.done))
     const matching = all.filter(w => {
       if (from && w.d < from) return false
       if (w.d > hi) return false
+      if (exercise_id && !entryOf(w)) return false
       return true
     })
     const filtered = matching.slice(0, lim)
@@ -324,9 +327,49 @@ export const listWorkouts = {
         prs: (w.prs || []).length,
         bodyweight_at_workout: w.bw || null,
         // The gym (equipment profile) it was done at, since 1.4.4; null before, or with no gyms.
-        gym: gymOf(w)
+        gym: gymOf(w),
+        ...(exercise_id ? { exercise: exerciseSets(entryOf(w), exercise_id, S) } : {})
       }))
     }
+  }
+}
+
+// One exercise of a session, for list_workouts' exercise filter: its completed sets as w/r
+// (the couple pr_table and estimate_1rm use), warm-ups marked, and whether it was a load PR.
+function exerciseSets(entry, id, S) {
+  const ex = exerciseOf(id, S)
+  const sets = (entry?.sets || []).filter(x => x && x.done)
+  return {
+    id, name: ex.n,
+    sets: sets.map(x => ({ w: typeof x.w === 'number' ? x.w : null, r: typeof x.r === 'number' ? x.r : null, ...(x.warmup || x.wu ? { warmup: true } : {}) })),
+    top_weight: entry?.topW || null
+  }
+}
+
+/** list_personal_records — the load PRs the app recorded, newest first. */
+export const listPersonalRecords = {
+  name: 'list_personal_records',
+  description: 'List the load PRs (a heavier top set than ever before on that exercise) the app recorded when each workout was finished, newest first, with the date, the workout and the weight. Filter by exercise and by date. For estimated one-rep maxes and an all-time PR table use estimate_1rm.',
+  schema: {
+    exercise_id: z.string().min(1).optional().describe('Only PRs on this exercise.'),
+    from: isoDate().optional().describe('Inclusive start date YYYY-MM-DD.'),
+    to: isoDate().optional().describe('Inclusive end date YYYY-MM-DD.'),
+    limit: z.number().int().min(1).max(200).optional().describe('Max items to return. Defaults to 50.')
+  },
+  handler: ({ exercise_id, from, to, limit }) => {
+    const S = getState()
+    if (!S) return noState()
+    const lim = Math.min(Math.max(limit || 50, 1), 200)
+    const rows = []
+    for (const w of (S.workouts || []).slice().sort((a, b) => (b.d || '').localeCompare(a.d || ''))) {
+      if (!w || (from && w.d < from) || (to && w.d > to)) continue
+      for (const id of Array.isArray(w.prs) ? w.prs : []) {
+        if (typeof id !== 'string' || (exercise_id && id !== exercise_id)) continue
+        const entry = (w.entries || []).find(e => e && e.id === id)
+        rows.push({ date: w.d, workout_id: w.id || null, exercise: { id, name: exerciseOf(id, S).n }, top_weight: entry?.topW || null })
+      }
+    }
+    return { unit: S.unit || 'kg', matching_count: rows.length, truncated: rows.length > lim, records: rows.slice(0, lim) }
   }
 }
 
@@ -795,7 +838,7 @@ export const searchExercises = {
 }
 
 export const TOOLS = [
-  listRoutines, getRoutine, previewSession, getWeekPlan, listWorkouts, getWorkout, getBodyweight, estimate1rm, muscleBalance, getProgramme, searchExercises
+  listRoutines, getRoutine, previewSession, getWeekPlan, listWorkouts, getWorkout, getBodyweight, estimate1rm, muscleBalance, getProgramme, searchExercises, listPersonalRecords
 ]
 
 function noState() {
