@@ -34,6 +34,32 @@ list.push({ key: 'NOTICE.md', file: path.join(media, 'NOTICE.md') });
 console.log(`${list.length} files for r2://${bucket}`);
 if (dry) process.exit(0);
 
-const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'opengym-media-')), 'list.json');
-fs.writeFileSync(tmp, JSON.stringify(list));
-execFileSync('npx', ['wrangler', 'r2', 'bulk', 'put', bucket, '--filename', tmp, '--remote', '--jurisdiction', 'eu', '--concurrency', '20'], { stdio: 'inherit', cwd: path.join(root, 'cf-app') });
+// In batches, so one failed request (R2's API answers a 502 now and then) costs one batch, not
+// the whole upload: each batch is tried three times, and the ones done are remembered in
+// .wrangler/ (gitignored), so running the script again carries on where it stopped.
+const BATCH = 500;
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'opengym-media-'));
+const stateFile = path.join(root, 'cf-app', '.wrangler', `media-upload-${bucket}.json`);
+fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+const sig = list.length + ':' + list[0].key + ':' + list[list.length - 1].key;
+let done = new Set();
+try { const st = JSON.parse(fs.readFileSync(stateFile, 'utf8')); if (st.sig === sig) done = new Set(st.done); } catch { /* first run */ }
+const batches = Math.ceil(list.length / BATCH);
+for (let b = 0; b < batches; b++) {
+  if (done.has(b)) continue;
+  const file = path.join(dir, `batch-${b}.json`);
+  fs.writeFileSync(file, JSON.stringify(list.slice(b * BATCH, (b + 1) * BATCH)));
+  for (let attempt = 1; ; attempt++) {
+    try {
+      execFileSync('npx', ['wrangler', 'r2', 'bulk', 'put', bucket, '--filename', file, '--remote', '--jurisdiction', 'eu', '--concurrency', '10'], { stdio: ['ignore', 'ignore', 'inherit'], cwd: path.join(root, 'cf-app') });
+      break;
+    } catch (e) {
+      if (attempt >= 3) { console.error(`batch ${b + 1}/${batches} failed three times; run the script again to carry on`); process.exit(1); }
+      console.error(`batch ${b + 1}/${batches} failed (attempt ${attempt}), trying again`);
+    }
+  }
+  done.add(b);
+  fs.writeFileSync(stateFile, JSON.stringify({ sig, done: [...done] }));
+  console.log(`batch ${b + 1}/${batches} uploaded`);
+}
+console.log(`all ${list.length} files are in r2://${bucket}`);
