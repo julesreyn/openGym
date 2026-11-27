@@ -55,11 +55,34 @@ export function json(res, code, obj, extraHeaders) {
 }
 
 /** Same answers as api/server.js readBody: {} for an empty body, 415, 413, 400 'invalid json'. */
+/**
+ * A body read up to `max` bytes: the stream is cancelled as soon as more arrive, so an oversized
+ * body (with or without a Content-Length) is never held in memory. → Uint8Array, or null when
+ * it is over `max`.
+ */
+export async function readCapped(body, max) {
+  if (!body) return new Uint8Array(0);
+  const reader = body.getReader();
+  const parts = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) { await reader.cancel().catch(() => {}); return null; }
+    parts.push(value);
+  }
+  const out = new Uint8Array(total);
+  let i = 0;
+  for (const p of parts) { out.set(p, i); i += p.byteLength; }
+  return out;
+}
+
 export async function readBody(req, max = MAX_BODY) {
   const len = +(req.headers['content-length'] || 0);
   if (len > max) throw new HttpError(413, 'body too large');
-  const buf = new Uint8Array(await req.raw.arrayBuffer());
-  if (buf.length > max) throw new HttpError(413, 'body too large');
+  const buf = await readCapped(req.raw.body, max);
+  if (!buf) throw new HttpError(413, 'body too large');
   if (!buf.length) return {};
   if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] || '')) {
     throw new HttpError(415, 'content-type must be application/json');
@@ -73,8 +96,9 @@ export async function readBody(req, max = MAX_BODY) {
 
 /** application/x-www-form-urlencoded or JSON, as the OAuth token endpoint takes (server.js readForm). */
 export async function readForm(req, max = 64 * 1024) {
-  const buf = new Uint8Array(await req.raw.arrayBuffer());
-  if (buf.length > max) throw new HttpError(413, 'body too large');
+  if (+(req.headers['content-length'] || 0) > max) throw new HttpError(413, 'body too large');
+  const buf = await readCapped(req.raw.body, max);
+  if (!buf) throw new HttpError(413, 'body too large');
   const t = new TextDecoder().decode(buf);
   const ct = req.headers['content-type'] || '';
   if (/^application\/json/i.test(ct)) {

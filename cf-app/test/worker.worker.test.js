@@ -105,3 +105,11 @@ describe('uploads (R2)', () => {
     expect(JSON.stringify(missing)).not.toContain(hash);
   });
 });
+
+describe('request bodies', () => {
+  it('a body over the cap without a Content-Length is refused with 413', async () => {
+    const big = new ReadableStream({ pull(c) { c.enqueue(new Uint8Array(64 * 1024)); } });
+    const r = await SELF.fetch(ORIGIN + '/api/oauth/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: big, duplex: 'half' });
+    expect(r.status).toBe(413);
+  });
+});

@@ -30,7 +30,7 @@ import * as oauth from '../../api/oauth.js';
 import { excusedOn, nudgeFor } from '../../api/nudge.js';
 import { mediaLimits, mediaConfig } from '../../api/media.js';
 import { configFrom } from './config.js';
-import { HttpError, nodeReq, nodeRes, json, readBody, readForm, text } from './http.js';
+import { HttpError, nodeReq, nodeRes, json, readBody, readForm, readCapped, text } from './http.js';
 import { createDocStore, PersistentMap } from './sqlstore.js';
 import { createMediaRoutes, MediaError } from './media.js';
 
@@ -354,9 +354,10 @@ export function createApp({ sql, env, now = Date.now }) {
   const fetchCimd = async u => {
     const r = await fetch(u, { redirect: 'error', headers: { accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const t = await r.text();
-    if (t.length > 16384) throw new Error('too large');
-    return JSON.parse(t);
+    if (+(r.headers.get('content-length') || 0) > 16384) throw new Error('too large');
+    const buf = await readCapped(r.body, 16384);
+    if (!buf) throw new Error('too large');
+    return JSON.parse(new TextDecoder().decode(buf));
   };
   const form = async req => new URLSearchParams(Object.entries(await readForm(req, 16384)).map(([k, v]) => [k, String(v)]));
   function oauthRoutes() {
